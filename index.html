@@ -184,19 +184,51 @@
         const employeeSheetName = 'LIST NAMA'; // Nama sheet untuk data karyawan
 
         function addEmployee() {
-        const nik = document.getElementById('nik').value.trim();
-        
-        if (!nik) {
-            alert('Silakan masukkan NIK');
-            return;
-        }
-        
-        if (employeesToAdd.some(emp => emp.nik === nik)) {
-            alert('Karyawan sudah ditambahkan');
-            return;
-        }
-        
-        showLoading(true);
+              const nikInput = document.getElementById('nik');
+              const nik = nikInput.value.trim();
+              
+              if (!nik) {
+                alert('Silakan masukkan NIK');
+                return;
+              }
+              
+              // Cek apakah sudah ada di list
+              if (employeesToAdd.some(emp => emp.nik === nik)) {
+                alert('Karyawan sudah ditambahkan');
+                return;
+              }
+              
+              showLoading(true);
+              
+              // Kirim request ke Google Apps Script
+              fetch(`${scriptURL}?action=getEmployee&sheetId=${databaseSheetID}&sheetName=${employeeSheetName}&nik=${encodeURIComponent(nik)}`)
+                .then(response => {
+                  if (!response.ok) throw new Error('Network response was not ok');
+                  return response.json();
+                })
+                .then(data => {
+                  if (data.success) {
+                    employeesToAdd.push({
+                      nik: data.data.NIK,
+                      nama: data.data.NAMA || '-',
+                      jabatan: data.data.JABATAN || '-',
+                      departemen: data.data.DEPARTEMEN || '-',
+                      grade: data.data.GRADE || '-'
+                    });
+                    renderEmployeeList();
+                    nikInput.value = ''; // Kosongkan input
+                  } else {
+                    alert(`Error: ${data.message || 'NIK tidak ditemukan'}`);
+                  }
+                })
+                .catch(error => {
+                  console.error('Error:', error);
+                  alert(`Terjadi kesalahan: ${error.message}`);
+                })
+                .finally(() => {
+                  showLoading(false);
+                });
+            }
         
         // Mengambil data karyawan dari sheet LIST NAMA
         fetch(`${scriptURL}?action=getEmployee&sheetId=${databaseSheetID}&sheetName=${employeeSheetName}&nik=${encodeURIComponent(nik)}`)

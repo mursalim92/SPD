@@ -41,6 +41,18 @@
             border-radius: 8px;
             text-align: center;
         }
+        .employee-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .employee-card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -57,53 +69,25 @@
                         <input type="text" class="form-control" id="nomorSuratDinas" required>
                     </div>
                     <div class="col-md-6">
-                        <label for="jumlahHariTidakDihitung" class="form-label">JUMLAH HARI TIDAK DIHITUNG</label>
-                        <input type="number" class="form-control" id="jumlahHariTidakDihitung">
-                        <small class="text-muted">*Hari yang tidak dihitung dinas sesuai kebijakan</small>
+                        <label for="hrSite" class="form-label">HR SITE</label>
+                        <select class="form-select" id="hrSite" required>
+                            <option value="">Pilih HR Site</option>
+                            <option value="HR Jakarta">HR Jakarta</option>
+                            <option value="HR Bandung">HR Bandung</option>
+                            <option value="HR Surabaya">HR Surabaya</option>
+                            <!-- Tambahkan opsi lainnya sesuai kebutuhan -->
+                        </select>
                     </div>
                 </div>
                 
                 <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="hrSite" class="form-label">HR SITE</label>
-                        <input type="text" class="form-control" id="hrSite">
-                    </div>
                     <div class="col-md-6">
                         <label for="spdNo" class="form-label">SPD NO.</label>
                         <input type="text" class="form-control" id="spdNo">
                     </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="nik" class="form-label">NIK</label>
-                        <input type="text" class="form-control" id="nik" required>
-                    </div>
                     <div class="col-md-6">
                         <label for="spdDate" class="form-label">SPD DATE</label>
                         <input type="date" class="form-control" id="spdDate">
-                    </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="nama" class="form-label">NAMA</label>
-                        <input type="text" class="form-control" id="nama" readonly>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="jabatan" class="form-label">JABATAN</label>
-                        <input type="text" class="form-control" id="jabatan" readonly>
-                    </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="departemen" class="form-label">DEPARTEMEN</label>
-                        <input type="text" class="form-control" id="departemen" readonly>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="grade" class="form-label">GRADE</label>
-                        <input type="text" class="form-control" id="grade" readonly>
                     </div>
                 </div>
                 
@@ -131,6 +115,23 @@
                             <option value="LAMA">LAMA</option>
                         </select>
                     </div>
+                </div>
+                
+                <!-- Form untuk menambahkan karyawan -->
+                <div class="mb-4">
+                    <h4>Tambah Karyawan</h4>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nik" class="form-label">NIK</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="nik">
+                                <button class="btn btn-outline-secondary" type="button" id="addEmployeeBtn">Tambah</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Daftar karyawan yang akan ditambahkan -->
+                    <div id="employeeList"></div>
                 </div>
                 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -180,6 +181,10 @@
         const scriptURL = 'https://script.google.com/macros/s/AKfycbwgv70gkz4P6VSgP4y_2c1Ipop1e7yEFYfi_ggKsS5jFQ--_X8D7ynAXFcEFu3k6naK/exec'; // Ganti dengan URL Apps Script Anda
         const databaseSheetID = '1bcKEYXhljkTN5BHmsBZJ4ti33zSOLSGieKyujS5HcQQ'; // ID spreadsheet database
         const dinasSheetName = 'DATABASE DINAS'; // Nama sheet untuk data dinas
+        const employeeSheetName = 'LIST NAMA'; // Nama sheet untuk data karyawan
+        
+        // Menyimpan data karyawan sementara
+        let employeesToAdd = [];
         
         document.addEventListener('DOMContentLoaded', function() {
             // Load data saat halaman dimuat
@@ -196,12 +201,9 @@
                 resetForm();
             });
             
-            // Event listener untuk NIK (auto-fill data karyawan)
-            document.getElementById('nik').addEventListener('change', function() {
-                const nik = this.value;
-                if (nik) {
-                    fetchEmployeeData(nik);
-                }
+            // Event listener untuk tombol tambah karyawan
+            document.getElementById('addEmployeeBtn').addEventListener('click', function() {
+                addEmployee();
             });
         });
         
@@ -212,30 +214,43 @@
         function resetForm() {
             document.getElementById('dinasForm').reset();
             document.getElementById('rowId').value = '';
-            document.getElementById('nama').value = '';
-            document.getElementById('jabatan').value = '';
-            document.getElementById('departemen').value = '';
-            document.getElementById('grade').value = '';
+            document.getElementById('employeeList').innerHTML = '';
+            employeesToAdd = [];
         }
         
-        function fetchEmployeeData(nik) {
+        function addEmployee() {
+            const nik = document.getElementById('nik').value.trim();
+            if (!nik) {
+                alert('Silakan masukkan NIK');
+                return;
+            }
+            
+            // Cek apakah karyawan sudah ada di list
+            if (employeesToAdd.some(emp => emp.nik === nik)) {
+                alert('Karyawan sudah ditambahkan');
+                return;
+            }
+            
             showLoading(true);
             
-            // Mengambil data karyawan dari sheet DATABASE NEW
-            fetch(`${scriptURL}?action=getEmployee&sheetId=${databaseSheetID}&nik=${nik}`)
+            // Mengambil data karyawan dari sheet LIST NAMA
+            fetch(`${scriptURL}?action=getEmployee&sheetId=${databaseSheetID}&sheetName=${employeeSheetName}&nik=${nik}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('nama').value = data.data.NAMA || '';
-                        document.getElementById('jabatan').value = data.data.JABATAN || '';
-                        document.getElementById('departemen').value = data.data.DEPARTEMEN || '';
-                        document.getElementById('grade').value = data.data.GRADE || '';
+                        const employee = data.data;
+                        employeesToAdd.push({
+                            nik: employee.NIK,
+                            nama: employee.NAMA,
+                            jabatan: employee.JABATAN,
+                            departemen: employee.DEPARTEMEN,
+                            grade: employee.GRADE
+                        });
+                        
+                        renderEmployeeList();
+                        document.getElementById('nik').value = '';
                     } else {
                         alert('Data karyawan tidak ditemukan');
-                        document.getElementById('nama').value = '';
-                        document.getElementById('jabatan').value = '';
-                        document.getElementById('departemen').value = '';
-                        document.getElementById('grade').value = '';
                     }
                     showLoading(false);
                 })
@@ -244,6 +259,37 @@
                     showLoading(false);
                     alert('Terjadi kesalahan saat mengambil data karyawan');
                 });
+        }
+        
+        function renderEmployeeList() {
+            const container = document.getElementById('employeeList');
+            container.innerHTML = '';
+            
+            if (employeesToAdd.length === 0) {
+                container.innerHTML = '<p class="text-muted">Belum ada karyawan ditambahkan</p>';
+                return;
+            }
+            
+            employeesToAdd.forEach((employee, index) => {
+                const card = document.createElement('div');
+                card.className = 'employee-card';
+                card.innerHTML = `
+                    <div class="employee-card-header">
+                        <h5>${employee.nama}</h5>
+                        <button class="btn btn-sm btn-danger" onclick="removeEmployee(${index})">Hapus</button>
+                    </div>
+                    <p><strong>NIK:</strong> ${employee.nik}</p>
+                    <p><strong>Jabatan:</strong> ${employee.jabatan}</p>
+                    <p><strong>Departemen:</strong> ${employee.departemen}</p>
+                    <p><strong>Grade:</strong> ${employee.grade}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function removeEmployee(index) {
+            employeesToAdd.splice(index, 1);
+            renderEmployeeList();
         }
         
         function loadData() {
@@ -288,24 +334,24 @@
         }
         
         function saveData() {
+            if (employeesToAdd.length === 0) {
+                alert('Harap tambahkan minimal satu karyawan');
+                return;
+            }
+            
             showLoading(true);
             
             const formData = {
                 rowId: document.getElementById('rowId').value,
                 nomorSuratDinas: document.getElementById('nomorSuratDinas').value,
-                jumlahHariTidakDihitung: document.getElementById('jumlahHariTidakDihitung').value || 0,
                 hrSite: document.getElementById('hrSite').value,
                 spdNo: document.getElementById('spdNo').value,
-                nik: document.getElementById('nik').value,
                 spdDate: document.getElementById('spdDate').value,
-                nama: document.getElementById('nama').value,
-                jabatan: document.getElementById('jabatan').value,
-                departemen: document.getElementById('departemen').value,
-                grade: document.getElementById('grade').value,
                 mulaiDinas: document.getElementById('mulaiDinas').value,
                 selesaiDinas: document.getElementById('selesaiDinas').value,
                 lokasiDinas: document.getElementById('lokasiDinas').value,
-                statusDinas: document.getElementById('statusDinas').value
+                statusDinas: document.getElementById('statusDinas').value,
+                employees: employeesToAdd
             };
             
             const action = formData.rowId ? 'updateDinas' : 'addDinas';
@@ -349,19 +395,23 @@
                         const row = data.data;
                         document.getElementById('rowId').value = rowNum;
                         document.getElementById('nomorSuratDinas').value = row['No. Surat Dinas'] || '';
-                        document.getElementById('jumlahHariTidakDihitung').value = row['HARI TIDAK DIHITUNG'] || '';
                         document.getElementById('hrSite').value = row['HR SITE'] || '';
                         document.getElementById('spdNo').value = row['No.SPD'] || '';
-                        document.getElementById('nik').value = row.NIK || '';
                         document.getElementById('spdDate').value = formatDateForInput(row['TGL SPD']);
-                        document.getElementById('nama').value = row.NAMA || '';
-                        document.getElementById('jabatan').value = row.JABATAN || '';
-                        document.getElementById('departemen').value = row.DEPARTEMEN || '';
-                        document.getElementById('grade').value = row.GRADE || '';
                         document.getElementById('mulaiDinas').value = formatDateForInput(row['MULAI DINAS']);
                         document.getElementById('selesaiDinas').value = formatDateForInput(row['AKHIR DINAS']);
                         document.getElementById('lokasiDinas').value = row['LOKASI DINAS'] || '';
                         document.getElementById('statusDinas').value = row['STATUS DINAS'] || '';
+                        
+                        // Tambahkan karyawan ke list
+                        employeesToAdd = [{
+                            nik: row.NIK,
+                            nama: row.NAMA,
+                            jabatan: row.JABATAN,
+                            departemen: row.DEPARTEMEN,
+                            grade: row.GRADE
+                        }];
+                        renderEmployeeList();
                     } else {
                         alert('Gagal memuat data untuk diedit');
                     }
@@ -411,6 +461,11 @@
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
+        
+        // Fungsi global untuk diakses dari HTML
+        window.removeEmployee = removeEmployee;
+        window.editData = editData;
+        window.deleteData = deleteData;
     </script>
 </body>
 </html>

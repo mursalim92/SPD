@@ -184,55 +184,49 @@
         const employeeSheetName = 'LIST NAMA'; // Nama sheet untuk data karyawan
 
         function addEmployee() {
-  const nik = document.getElementById('nik').value.trim();
-  
-  if (!nik) {
-    alert('Silakan masukkan NIK');
-    return;
-  }
-  
-  if (employeesToAdd.some(emp => emp.nik === nik)) {
-    alert('Karyawan sudah ditambahkan');
-    return;
-  }
-  
-  showLoading(true);
-  
-  // Encode parameter untuk URL
-  const params = new URLSearchParams();
-  params.append('action', 'getEmployee');
-  params.append('sheetId', databaseSheetID);
-  params.append('sheetName', 'LIST NAMA');
-  params.append('nik', nik);
-  
-  fetch(`${scriptURL}?${params.toString()}`)
-    .then(response => {
-      if (!response.ok) throw new Error('Network response was not ok');
-      return response.json();
-    })
-    .then(data => {
-      if (data.success) {
-        employeesToAdd.push({
-          nik: data.data.NIK,
-          nama: data.data.NAMA,
-          jabatan: data.data.JABATAN,
-          departemen: data.data.DEPARTEMEN,
-          grade: data.data.GRADE
-        });
-        renderEmployeeList();
-        document.getElementById('nik').value = '';
-      } else {
-        alert(`Error: ${data.message}\n${data.details || ''}`);
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert(`Terjadi kesalahan: ${error.message}`);
-    })
-    .finally(() => {
-      showLoading(false);
-    });
-}
+        const nik = document.getElementById('nik').value.trim();
+        
+        if (!nik) {
+            alert('Silakan masukkan NIK');
+            return;
+        }
+        
+        if (employeesToAdd.some(emp => emp.nik === nik)) {
+            alert('Karyawan sudah ditambahkan');
+            return;
+        }
+        
+        showLoading(true);
+        
+        // Mengambil data karyawan dari sheet LIST NAMA
+        fetch(`${scriptURL}?action=getEmployee&sheetId=${databaseSheetID}&sheetName=${employeeSheetName}&nik=${encodeURIComponent(nik)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    employeesToAdd.push({
+                        nik: data.data.NIK,
+                        nama: data.data.NAMA,
+                        jabatan: data.data.JABATAN,
+                        departemen: data.data.DEPARTEMEN,
+                        grade: data.data.GRADE
+                    });
+                    
+                    renderEmployeeList();
+                    document.getElementById('nik').value = '';
+                } else {
+                    alert('Data karyawan tidak ditemukan: ' + (data.message || ''));
+                }
+                showLoading(false);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showLoading(false);
+                alert('Terjadi kesalahan saat mengambil data karyawan: ' + error.message);
+            });
+    }
         // Menyimpan data karyawan sementara
         let employeesToAdd = [];
         

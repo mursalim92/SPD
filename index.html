@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mengarahkan...</title>
+</head>
+<body>
+
+    <p style="font-family: sans-serif; text-align: center; margin-top: 50px;">Mengarahkan...</p>
+
+    <script>
+        // Jalankan skrip ini sesegera mungkin
+        (function() {
+            // Cek apakah ada item 'user_id' di localStorage
+            // Ini adalah pengganti dari: isset($_SESSION['user_id'])
+            if (localStorage.getItem('user_id')) {
+                // Jika ada (sudah login), arahkan ke dashboard
+                // Ini adalah pengganti dari: header('Location: view/dashboard.php');
+                window.location.href = 'view/dashboard.php';
+            } else {
+                // Jika tidak ada (belum login), arahkan ke halaman login
+                // Ini adalah pengganti dari: header('Location: view/login.php');
+                window.location.href = 'view/login.php';
+            }
+        })();
+    </script>
+
+</body>
+</html>
